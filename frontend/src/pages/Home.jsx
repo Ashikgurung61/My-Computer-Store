@@ -11,11 +11,12 @@ import {
   CreditCard, 
   Star,
   ArrowRight,
-  CheckCircle
+  CheckCircle,
+  PlusCircle
 } from 'lucide-react';
 
 const Home = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAdmin } = useAuth();
 
   const features = [
     {
@@ -64,12 +65,22 @@ const Home = () => {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           {isAuthenticated ? (
-            <Button size="lg" asChild>
-              <Link to="/products">
-                Browse Products
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
+            <>
+              <Button size="lg" asChild>
+                <Link to="/products">
+                  Browse Products
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+              {isAdmin && (
+                <Button size="lg" variant="outline" asChild>
+                  <Link to="/add-product">
+                    <PlusCircle className="mr-2 h-5 w-5" />
+                    Add New Product
+                  </Link>
+                </Button>
+              )}
+            </>
           ) : (
             <>
               <Button size="lg" asChild>

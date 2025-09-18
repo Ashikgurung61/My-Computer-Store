@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ProductList from './pages/ProductList';
 import ProductDetail from './pages/ProductDetail';
+import AddProduct from './pages/AddProduct';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
@@ -58,6 +59,14 @@ function App() {
                     <ProtectedRoute>
                       <OrderConfirmation />
                     </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/add-product" 
+                  element={
+                    <AdminRoute>
+                      <AddProduct />
+                    </AdminRoute>
                   } 
                 />
               </Routes>
