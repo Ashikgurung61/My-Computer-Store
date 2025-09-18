@@ -27,15 +27,19 @@ const Signup = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpTimer, setOtpTimer] = useState(0);
 
-  const { signup, sendOTP, isAuthenticated } = useAuth();
+  const { signup, sendOTP, isAuthenticated, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/products', { replace: true });
+      if (isAdmin) {
+        navigate('/', { replace: true });
+      } else {
+        navigate('/products', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isAdmin, navigate]);
 
   // OTP timer countdown
   useEffect(() => {
@@ -170,7 +174,6 @@ const Signup = () => {
 
     try {
       await signup(formData);
-      navigate('/products', { replace: true });
     } catch (error) {
       setSignupError(error.message || 'Signup failed. Please try again.');
     } finally {

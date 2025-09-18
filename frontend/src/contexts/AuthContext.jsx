@@ -154,6 +154,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     sendOTP,
     isAuthenticated: !!user,
+    isAdmin: user?.profile?.role === 'admin',
   };
 
   return (

@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Product, Cart, CartItem, Profile
-from .serializers import ProductSerializer, CartSerializer, CartItemSerializer
+from .serializers import ProductSerializer, CartSerializer, CartItemSerializer, UserSerializer, RegisterSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.contrib.auth.models import User
@@ -104,49 +104,16 @@ def send_otp(request):
 
 @api_view(['POST'])
 def signup(request):
-    email_or_phone = request.data.get('emailOrPhone')
-    password = request.data.get('password')
-    first_name = request.data.get('firstName')
-    last_name = request.data.get('lastName')
-
-    if not all([email_or_phone, password, first_name, last_name]):
-        return Response({'error': 'All fields are required'}, status=400)
-
-    email = None
-    phone = None
-    if '@' in email_or_phone:
-        email = email_or_phone
-    else:
-        phone = email_or_phone
-        email = f'{phone}@example.com'
-
-    try:
-        user = User.objects.create_user(
-            username=email,
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name
-        )
-        if phone:
-            Profile.objects.create(user=user, phone=phone)
-        else:
-            Profile.objects.create(user=user)
-        
+    serializer = RegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
         token, _ = Token.objects.get_or_create(user=user)
-        
-    except Exception as e:
-        return Response({'error': str(e)}, status=400)
-
-    return Response({
-        'token': token.key,
-        'user': {
-            'id': user.id,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-        }
-    })
+        user_serializer = UserSerializer(user)
+        return Response({
+            'token': token.key,
+            'user': user_serializer.data
+        })
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 def login(request):
@@ -162,13 +129,9 @@ def login(request):
         return Response({'error': 'Invalid credentials'}, status=400)
 
     token, _ = Token.objects.get_or_create(user=user)
+    serializer = UserSerializer(user)
 
     return Response({
         'token': token.key,
-        'user': {
-            'id': user.id,
-            'email': user.email,
-            'first_name': user.first_name,
-            'last_name': user.last_name,
-        }
+        'user': serializer.data
     })

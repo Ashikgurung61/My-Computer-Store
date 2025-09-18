@@ -18,17 +18,23 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/products';
-      navigate(from, { replace: true });
+      const from = location.state?.from?.pathname;
+      if (from) {
+        navigate(from, { replace: true });
+      } else if (isAdmin) {
+        navigate('/', { replace: true });
+      } else {
+        navigate('/products', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, isAdmin, navigate, location]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -92,8 +98,6 @@ const Login = () => {
 
     try {
       await login(formData);
-      const from = location.state?.from?.pathname || '/products';
-      navigate(from, { replace: true });
     } catch (error) {
       setLoginError(error.message || 'Login failed. Please try again.');
     } finally {

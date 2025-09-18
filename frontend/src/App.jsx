@@ -12,6 +12,7 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 import './App.css';
 
 function App() {
@@ -23,25 +24,18 @@ function App() {
             <Navbar />
             <main className="container mx-auto px-4 py-8">
               <Routes>
-                <Route path="/" element={<Home />} />
+                <Route 
+                  path="/" 
+                  element={
+                    <AdminRoute>
+                      <Home />
+                    </AdminRoute>
+                  } 
+                />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
-                <Route 
-                  path="/products" 
-                  element={
-                    <ProtectedRoute>
-                      <ProductList />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/product/:id" 
-                  element={
-                    <ProtectedRoute>
-                      <ProductDetail />
-                    </ProtectedRoute>
-                  } 
-                />
+                <Route path="/products" element={<ProductList />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
                 <Route 
                   path="/cart" 
                   element={

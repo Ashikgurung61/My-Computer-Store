@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const Navbar = () => {
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, isAdmin } = useAuth();
   const { getCartItemsCount } = useCart();
   const navigate = useNavigate();
   const cartItemsCount = getCartItemsCount();
@@ -41,20 +41,20 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-6">
-            <Link 
-              to="/" 
-              className="text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Home
-            </Link>
-            {isAuthenticated && (
+            {isAdmin && (
               <Link 
-                to="/products" 
+                to="/" 
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
-                Products
+                Home
               </Link>
             )}
+            <Link 
+              to="/products" 
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Products
+            </Link>
           </div>
 
           {/* Right side actions */}
@@ -118,14 +118,16 @@ const Navbar = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => navigate('/')}>
-                    Home
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate('/')}>
+                      Home
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => navigate('/products')}>
+                    Products
                   </DropdownMenuItem>
                   {isAuthenticated && (
                     <>
-                      <DropdownMenuItem onClick={() => navigate('/products')}>
-                        Products
-                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate('/cart')}>
                         Cart ({cartItemsCount})
                       </DropdownMenuItem>
