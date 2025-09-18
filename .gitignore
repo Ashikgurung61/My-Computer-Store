@@ -18,3 +18,5 @@ build/
 
 # Environment variables
 .env
+
+/node_modules

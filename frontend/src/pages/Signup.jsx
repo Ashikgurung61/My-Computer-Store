@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, Phone, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import OtpInput from '@/components/ui/otp-input';
 
 const Signup = () => {
   const [step, setStep] = useState(1); // 1: Form, 2: OTP Verification
@@ -123,10 +124,11 @@ const Signup = () => {
     setSignupError('');
 
     try {
-      await sendOTP(formData.emailOrPhone);
+      // await sendOTP(formData.emailOrPhone); // Temporarily disabled for development
       setOtpSent(true);
       setStep(2);
       setOtpTimer(60); // 60 seconds countdown
+      setFormData(prev => ({ ...prev, otp: '123456' }));
     } catch (error) {
       setSignupError(error.message || 'Failed to send OTP. Please try again.');
     } finally {
@@ -137,7 +139,7 @@ const Signup = () => {
   const handleResendOTP = async () => {
     setIsLoading(true);
     try {
-      await sendOTP(formData.emailOrPhone);
+      // await sendOTP(formData.emailOrPhone); // Temporarily disabled for development
       setOtpTimer(60);
     } catch (error) {
       setSignupError(error.message || 'Failed to resend OTP. Please try again.');
@@ -189,16 +191,7 @@ const Signup = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="otp">Enter 6-digit OTP</Label>
-                <Input
-                  id="otp"
-                  name="otp"
-                  type="text"
-                  placeholder="123456"
-                  value={formData.otp}
-                  onChange={handleInputChange}
-                  maxLength={6}
-                  className={`text-center text-lg tracking-widest ${errors.otp ? 'border-destructive' : ''}`}
-                />
+                <OtpInput length={6} onChange={(otp) => setFormData(prev => ({ ...prev, otp }))} />
                 {errors.otp && (
                   <p className="text-sm text-destructive">{errors.otp}</p>
                 )}
@@ -242,12 +235,6 @@ const Signup = () => {
                 Back to Form
               </Button>
             </form>
-
-            <div className="mt-4 p-4 bg-muted rounded-lg">
-              <p className="text-sm text-muted-foreground text-center">
-                <strong>Demo OTP:</strong> 123456
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>

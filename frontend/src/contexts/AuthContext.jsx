@@ -12,62 +12,64 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user from localStorage on app start
+  // Load user and token from localStorage on app start
   useEffect(() => {
     const savedUser = localStorage.getItem('techstore_user');
-    if (savedUser) {
+    const savedToken = localStorage.getItem('techstore_token');
+    if (savedUser && savedToken) {
       try {
         setUser(JSON.parse(savedUser));
+        setToken(savedToken);
       } catch (error) {
         console.error('Error parsing saved user:', error);
         localStorage.removeItem('techstore_user');
+        localStorage.removeItem('techstore_token');
       }
     }
     setLoading(false);
   }, []);
 
-  // Save user to localStorage whenever user state changes
+  // Save user and token to localStorage whenever they change
   useEffect(() => {
-    if (user) {
+    if (user && token) {
       localStorage.setItem('techstore_user', JSON.stringify(user));
+      localStorage.setItem('techstore_token', token);
     } else {
       localStorage.removeItem('techstore_user');
+      localStorage.removeItem('techstore_token');
     }
-  }, [user]);
+  }, [user, token]);
 
   const login = async (credentials) => {
     try {
       setLoading(true);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulate login validation
-      const { emailOrPhone, password } = credentials;
-      
-      if (!emailOrPhone || !password) {
-        throw new Error('Email/Phone and password are required');
-      }
-      
-      if (password.length < 6) {
-        throw new Error('Invalid credentials');
-      }
-      
-      // Create user object
-      const userData = {
-        id: Date.now(),
-        email: emailOrPhone.includes('@') ? emailOrPhone : null,
-        phone: !emailOrPhone.includes('@') ? emailOrPhone : null,
-        name: emailOrPhone.includes('@') 
-          ? emailOrPhone.split('@')[0] 
-          : `User${emailOrPhone.slice(-4)}`,
-        loginTime: new Date().toISOString()
+      const payload = {
+        email: credentials.emailOrPhone,
+        password: credentials.password,
       };
-      
-      setUser(userData);
-      return { success: true, user: userData };
+      const response = await fetch('http://127.0.0.1:8000/api/login/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed');
+      }
+
+      const data = await response.json();
+      const { token, user } = data;
+
+      setUser(user);
+      setToken(token);
+
+      return { success: true, user };
     } catch (error) {
       throw error;
     } finally {
@@ -78,42 +80,25 @@ export const AuthProvider = ({ children }) => {
   const signup = async (userData) => {
     try {
       setLoading(true);
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      const { emailOrPhone, password, confirmPassword, otp } = userData;
-      
-      // Validation
-      if (!emailOrPhone || !password || !confirmPassword) {
-        throw new Error('All fields are required');
-      }
-      
-      if (password !== confirmPassword) {
-        throw new Error('Passwords do not match');
-      }
-      
-      if (password.length < 6) {
-        throw new Error('Password must be at least 6 characters');
-      }
-      
-      if (!otp || otp !== '123456') {
-        throw new Error('Invalid OTP. Use 123456 for demo');
-      }
-      
-      // Create user object
-      const newUser = {
-        id: Date.now(),
-        email: emailOrPhone.includes('@') ? emailOrPhone : null,
-        phone: !emailOrPhone.includes('@') ? emailOrPhone : null,
-        name: emailOrPhone.includes('@') 
-          ? emailOrPhone.split('@')[0] 
-          : `User${emailOrPhone.slice(-4)}`,
-        signupTime: new Date().toISOString()
+      const payload = {
+        email: userData.emailOrPhone,
+        password: userData.password,
       };
-      
-      setUser(newUser);
-      return { success: true, user: newUser };
+      const response = await fetch('http://127.0.0.1:8000/api/signup/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Signup failed');
+      }
+
+      const data = await response.json();
+      return { success: true, message: data.message };
     } catch (error) {
       throw error;
     } finally {
@@ -123,34 +108,45 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('techstore_user');
+    localStorage.removeItem('techstore_token');
   };
 
-  const sendOTP = async (emailOrPhone) => {
+  const sendOTP = async (email) => {
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (!emailOrPhone) {
-        throw new Error('Email or phone number is required');
+      setLoading(true);
+      const response = await fetch('http://127.0.0.1:8000/api/send-otp/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send OTP');
       }
-      
-      // Simulate OTP sending
-      console.log(`OTP sent to ${emailOrPhone}: 123456`);
-      return { success: true, message: 'OTP sent successfully. Use 123456 for demo.' };
+
+      const data = await response.json();
+      return { success: true, message: data.message };
     } catch (error) {
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
   const value = {
     user,
+    token,
     loading,
     login,
     signup,
     logout,
     sendOTP,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
   };
 
   return (
