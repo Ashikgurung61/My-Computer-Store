@@ -81,8 +81,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const payload = {
-        email: userData.emailOrPhone,
+        emailOrPhone: userData.emailOrPhone,
         password: userData.password,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
       };
       const response = await fetch('http://127.0.0.1:8000/api/signup/', {
         method: 'POST',
@@ -98,7 +100,12 @@ export const AuthProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      return { success: true, message: data.message };
+      const { token, user } = data;
+
+      setUser(user);
+      setToken(token);
+
+      return { success: true, user };
     } catch (error) {
       throw error;
     } finally {

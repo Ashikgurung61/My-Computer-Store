@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 
 const CartContext = createContext();
 
@@ -11,102 +12,134 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);
+  const [cart, setCart] = useState(null);
   const [loading, setLoading] = useState(false);
+  const { token, user } = useAuth();
 
-  // Load cart from localStorage on app start
-  useEffect(() => {
-    const savedCart = localStorage.getItem('techstore_cart');
-    if (savedCart) {
-      try {
-        setCartItems(JSON.parse(savedCart));
-      } catch (error) {
-        console.error('Error parsing saved cart:', error);
-        localStorage.removeItem('techstore_cart');
-      }
-    }
-  }, []);
-
-  // Save cart to localStorage whenever cart changes
-  useEffect(() => {
-    localStorage.setItem('techstore_cart', JSON.stringify(cartItems));
-  }, [cartItems]);
-
-  const addToCart = (product, quantity = 1) => {
+  const fetchCart = async () => {
+    if (!token) return;
     setLoading(true);
-    
-    setTimeout(() => {
-      setCartItems(prevItems => {
-        const existingItem = prevItems.find(item => item.id === product.id);
-        
-        if (existingItem) {
-          // Update quantity if item already exists
-          return prevItems.map(item =>
-            item.id === product.id
-              ? { ...item, quantity: item.quantity + quantity }
-              : item
-          );
-        } else {
-          // Add new item to cart
-          return [...prevItems, { ...product, quantity }];
-        }
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/cart/', {
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
       });
+      if (response.ok) {
+        const data = await response.json();
+        setCart(data);
+      } else {
+        console.error('Failed to fetch cart');
+      }
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
-  const removeFromCart = (productId) => {
+  useEffect(() => {
+    if (user) {
+      fetchCart();
+    } else {
+      setCart(null);
+    }
+  }, [user, token]);
+
+  const addToCart = async (productId, quantity = 1) => {
+    if (!token) return;
     setLoading(true);
-    
-    setTimeout(() => {
-      setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/cart/add_item/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`,
+        },
+        body: JSON.stringify({ product_id: productId, quantity }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCart(data);
+      } else {
+        console.error('Failed to add to cart');
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    } finally {
       setLoading(false);
-    }, 200);
+    }
   };
 
-  const updateQuantity = (productId, newQuantity) => {
+  const removeFromCart = async (itemId) => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/cart/items/${itemId}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCart(data);
+      } else {
+        console.error('Failed to remove from cart');
+      }
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateQuantity = async (itemId, newQuantity) => {
     if (newQuantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(itemId);
       return;
     }
-
+    if (!token) return;
     setLoading(true);
-    
-    setTimeout(() => {
-      setCartItems(prevItems =>
-        prevItems.map(item =>
-          item.id === productId
-            ? { ...item, quantity: newQuantity }
-            : item
-        )
-      );
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/cart/items/${itemId}/`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`,
+        },
+        body: JSON.stringify({ quantity: newQuantity }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCart(data);
+      } else {
+        console.error('Failed to update quantity');
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+    } finally {
       setLoading(false);
-    }, 200);
+    }
   };
 
   const clearCart = () => {
-    setCartItems([]);
-    localStorage.removeItem('techstore_cart');
+    // This would need a backend implementation, e.g., a `clear_cart` action on the CartViewSet
+    setCart(null);
   };
 
   const getCartTotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    if (!cart || !cart.items) return 0;
+    return cart.items.reduce((total, item) => total + (item.product.price * item.quantity), 0);
   };
 
   const getCartItemsCount = () => {
-    return cartItems.reduce((total, item) => total + item.quantity, 0);
-  };
-
-  const getCartItem = (productId) => {
-    return cartItems.find(item => item.id === productId);
-  };
-
-  const isInCart = (productId) => {
-    return cartItems.some(item => item.id === productId);
+    if (!cart || !cart.items) return 0;
+    return cart.items.reduce((total, item) => total + item.quantity, 0);
   };
 
   const value = {
-    cartItems,
+    cart,
     loading,
     addToCart,
     removeFromCart,
@@ -114,8 +147,6 @@ export const CartProvider = ({ children }) => {
     clearCart,
     getCartTotal,
     getCartItemsCount,
-    getCartItem,
-    isInCart
   };
 
   return (

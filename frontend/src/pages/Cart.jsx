@@ -17,7 +17,7 @@ import {
 
 const Cart = () => {
   const { 
-    cartItems, 
+    cart,
     updateQuantity, 
     removeFromCart, 
     clearCart, 
@@ -34,11 +34,11 @@ const Cart = () => {
     }).format(price);
   };
 
-  const handleQuantityChange = (productId, newQuantity) => {
+  const handleQuantityChange = (itemId, newQuantity) => {
     if (newQuantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(itemId);
     } else {
-      updateQuantity(productId, newQuantity);
+      updateQuantity(itemId, newQuantity);
     }
   };
 
@@ -47,7 +47,7 @@ const Cart = () => {
   const tax = subtotal * 0.08; // 8% tax
   const total = subtotal + shipping + tax;
 
-  if (cartItems.length === 0) {
+  if (!cart || !cart.items || cart.items.length === 0) {
     return (
       <div className="text-center py-12 space-y-6">
         <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center">
@@ -79,7 +79,7 @@ const Cart = () => {
             {getCartItemsCount()} {getCartItemsCount() === 1 ? 'item' : 'items'} in your cart
           </p>
         </div>
-        <Button variant="outline" onClick={clearCart}>
+        <Button variant="outline" onClick={clearCart} disabled>
           <Trash2 className="h-4 w-4 mr-2" />
           Clear Cart
         </Button>
@@ -88,15 +88,15 @@ const Cart = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
-          {cartItems.map((item) => (
+          {cart.items.map((item) => (
             <Card key={item.id}>
               <CardContent className="p-6">
                 <div className="flex gap-4">
                   {/* Product Image */}
                   <div className="flex-shrink-0">
                     <img
-                      src={item.image}
-                      alt={item.name}
+                      src={item.product.image}
+                      alt={item.product.name}
                       className="w-24 h-24 object-cover rounded-lg"
                     />
                   </div>
@@ -107,16 +107,12 @@ const Cart = () => {
                       <div>
                         <h3 className="font-semibold text-lg">
                           <Link 
-                            to={`/product/${item.id}`}
+                            to={`/product/${item.product.id}`}
                             className="hover:text-primary transition-colors"
                           >
-                            {item.name}
+                            {item.product.name}
                           </Link>
                         </h3>
-                        <p className="text-sm text-muted-foreground">{item.brand}</p>
-                        <Badge variant="outline" className="mt-1">
-                          {item.category}
-                        </Badge>
                       </div>
                       <Button
                         variant="ghost"
@@ -158,10 +154,10 @@ const Cart = () => {
                       {/* Price */}
                       <div className="text-right">
                         <div className="font-semibold text-lg">
-                          {formatPrice(item.price * item.quantity)}
+                          {formatPrice(item.product.price * item.quantity)}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {formatPrice(item.price)} each
+                          {formatPrice(item.product.price)} each
                         </div>
                       </div>
                     </div>

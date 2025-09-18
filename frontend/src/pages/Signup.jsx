@@ -12,6 +12,8 @@ import OtpInput from '@/components/ui/otp-input';
 const Signup = () => {
   const [step, setStep] = useState(1); // 1: Form, 2: OTP Verification
   const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
     emailOrPhone: '',
     password: '',
     confirmPassword: '',
@@ -48,6 +50,14 @@ const Signup = () => {
 
   const validateForm = () => {
     const newErrors = {};
+
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required';
+    }
+
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required';
+    }
 
     if (!formData.emailOrPhone.trim()) {
       newErrors.emailOrPhone = 'Email or phone number is required';
@@ -257,6 +267,39 @@ const Signup = () => {
                 <AlertDescription>{signupError}</AlertDescription>
               </Alert>
             )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  placeholder="John"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  className={errors.firstName ? 'border-destructive' : ''}
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-destructive">{errors.firstName}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  className={errors.lastName ? 'border-destructive' : ''}
+                />
+                {errors.lastName && (
+                  <p className="text-sm text-destructive">{errors.lastName}</p>
+                )}
+              </div>
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="emailOrPhone">Email or Phone Number</Label>

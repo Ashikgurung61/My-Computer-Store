@@ -81,7 +81,7 @@ const Navbar = () => {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
                       <User className="h-5 w-5 mr-2" />
-                      {user?.name || 'User'}
+                      {user?.first_name || 'User'}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
