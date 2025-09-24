@@ -103,7 +103,7 @@ const ProductList = () => {
                     alt={product.name}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                   />
-                  {!product.inStock && (
+                  {product.stock === 0 && (
                     <Badge variant="destructive" className="absolute top-2 left-2">
                       Out of Stock
                     </Badge>
@@ -141,7 +141,7 @@ const ProductList = () => {
                   <Button
                     size="sm"
                     onClick={() => handleAddToCart(product.id)}
-                    disabled={loading}
+                    disabled={loading || product.stock === 0}
                     className="flex-1"
                   >
                     {loading ? (

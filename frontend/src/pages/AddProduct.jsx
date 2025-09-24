@@ -14,6 +14,7 @@ const AddProduct = () => {
     brand: '',
     model_name: '',
     price: '',
+    stock: 0,
     description: '',
     image: null,
     processor_brand: '',
@@ -100,6 +101,10 @@ const AddProduct = () => {
             <div className="col-span-1 space-y-2">
               <Label htmlFor="price">Price</Label>
               <Input id="price" name="price" type="number" value={formData.price} onChange={handleInputChange} required />
+            </div>
+            <div className="col-span-1 space-y-2">
+              <Label htmlFor="stock">Stock</Label>
+              <Input id="stock" name="stock" type="number" value={formData.stock} onChange={handleInputChange} required />
             </div>
             <div className="col-span-full space-y-2">
               <Label htmlFor="description">Description</Label>
