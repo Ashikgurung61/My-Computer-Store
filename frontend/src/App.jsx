@@ -9,6 +9,7 @@ import Signup from './pages/Signup';
 import ProductList from './pages/ProductList';
 import ProductDetail from './pages/ProductDetail';
 import AddProduct from './pages/AddProduct';
+import UpdateProduct from './pages/UpdateProduct';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderConfirmation from './pages/OrderConfirmation';
@@ -66,6 +67,14 @@ function App() {
                   element={
                     <AdminRoute>
                       <AddProduct />
+                    </AdminRoute>
+                  } 
+                />
+                <Route 
+                  path="/product/update/:id" 
+                  element={
+                    <AdminRoute>
+                      <UpdateProduct />
                     </AdminRoute>
                   } 
                 />

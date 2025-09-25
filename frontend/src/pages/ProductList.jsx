@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,9 @@ import {
   Filter,
   Eye,
   Check,
-  Loader2
+  Loader2,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 
 const ProductList = () => {
@@ -23,6 +26,8 @@ const ProductList = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterBrand, setFilterBrand] = useState('all');
   const { addToCart, cart, loading } = useCart();
+  const { isAdmin, token } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -59,6 +64,26 @@ const ProductList = () => {
       style: 'currency',
       currency: 'USD'
     }).format(price);
+  };
+
+  const handleDelete = async (productId) => {
+    if (window.confirm('Are you sure you want to delete this product?')) {
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/api/products/${productId}/`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Token ${token}`
+          }
+        });
+        if (response.ok) {
+          setProducts(products.filter(p => p.id !== productId));
+        } else {
+          console.error('Failed to delete product');
+        }
+      } catch (error) {
+        console.error('Error deleting product:', error);
+      }
+    }
   };
 
   return (
@@ -154,6 +179,18 @@ const ProductList = () => {
                     {isInCart(product.id) ? 'Added' : 'Add to Cart'}
                   </Button>
                 </div>
+                {isAdmin && (
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => navigate(`/product/update/${product.id}`)}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Update
+                    </Button>
+                    <Button variant="destructive" size="sm" className="flex-1" onClick={() => handleDelete(product.id)}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

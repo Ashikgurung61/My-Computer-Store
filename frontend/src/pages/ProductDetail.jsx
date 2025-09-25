@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,13 +17,16 @@ import {
   Share2,
   Truck,
   Shield,
-  RotateCcw
+  RotateCcw,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { addToCart, getCartItem, updateQuantity, loading: cartLoading } = useCart();
+  const { cart, addToCart, updateQuantity, loading: cartLoading } = useCart();
+  const { isAdmin, token } = useAuth();
   const [quantity, setQuantity] = useState(1);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +36,7 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://127.0.0.1:8000/api/products/${id}/`);
+        const response = await fetch(`http://127.0.0.1:8000/api/products/${id}/?_=${new Date().getTime()}`);
         if (!response.ok) {
           throw new Error('Product not found');
         }
@@ -48,7 +52,27 @@ const ProductDetail = () => {
     fetchProduct();
   }, [id]);
 
-  const cartItem = product ? getCartItem(product.id) : null;
+  const cartItem = cart?.items.find(item => item.product.id === product?.id);
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this product?')) {
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/api/products/${id}/`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Token ${token}`
+          }
+        });
+        if (response.ok) {
+          navigate('/products');
+        } else {
+          console.error('Failed to delete product');
+        }
+      } catch (error) {
+        console.error('Error deleting product:', error);
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -185,6 +209,19 @@ const ProductDetail = () => {
                 <Share2 className="h-4 w-4" />
               </Button>
             </div>
+
+            {isAdmin && (
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" size="lg" className="flex-1" onClick={() => navigate(`/product/update/${product.id}`)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Update
+                </Button>
+                <Button variant="destructive" size="lg" className="flex-1" onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            )}
 
             {cartItem && (
               <p className="text-sm text-muted-foreground">
