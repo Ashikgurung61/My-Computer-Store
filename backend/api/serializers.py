@@ -26,6 +26,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 class ProductSerializer(serializers.ModelSerializer):
+    image = serializers.ImageField(required=False)
+
     class Meta:
         model = Product
         fields = '__all__'

@@ -11,11 +11,28 @@ from rest_framework.authtoken.models import Token
 from django.core.mail import send_mail
 from django.conf import settings
 import random
+from .permissions import IsAdminRole
+
+from rest_framework.parsers import MultiPartParser, FormParser
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
-    permission_classes = [AllowAny]
+    parser_classes = (MultiPartParser, FormParser)
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAdminRole]
+        return [permission() for permission in permission_classes]
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
 class CartViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -28,7 +45,7 @@ class CartViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
     def add_item(self, request):
         product_id = request.data.get('product_id')
-        quantity = request.data.get('quantity', 1)
+        quantity = int(request.data.get('quantity', 1))
 
         if not product_id:
             return Response({'error': 'Product ID is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -38,15 +55,24 @@ class CartViewSet(viewsets.ViewSet):
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Check if there is enough stock
+        if product.stock < quantity:
+            return Response({'error': 'Not enough stock available'}, status=status.HTTP_400_BAD_REQUEST)
+
         cart, _ = Cart.objects.get_or_create(user=request.user)
         cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product)
 
         if not created:
-            cart_item.quantity += int(quantity)
+            cart_item.quantity += quantity
         else:
-            cart_item.quantity = int(quantity)
+            cart_item.quantity = quantity
         
         cart_item.save()
+
+        # Decrement the stock
+        product.stock -= quantity
+        product.save(update_fields=['stock'])
+
         serializer = CartSerializer(cart)
         return Response(serializer.data)
 

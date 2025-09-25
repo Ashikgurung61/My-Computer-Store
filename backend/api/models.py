@@ -41,6 +41,7 @@ class Product(models.Model):
     # Other
     os = models.CharField(max_length=100, blank=True, null=True)
     warranty = models.CharField(max_length=255, blank=True, null=True)
+    stock = models.PositiveIntegerField(default=0)
 
     def __str__(self):
         return self.name
