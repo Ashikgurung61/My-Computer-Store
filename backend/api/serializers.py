@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Product, Cart, CartItem, Profile
+from .models import Product, Cart, CartItem, Profile, Category
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,12 +25,20 @@ class RegisterSerializer(serializers.ModelSerializer):
         Profile.objects.create(user=user)
         return user
 
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ('id', 'name', 'image')
+
 class ProductSerializer(serializers.ModelSerializer):
-    image = serializers.ImageField(required=False)
+    category = CategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), source='category', write_only=True
+    )
 
     class Meta:
         model = Product
-        fields = '__all__'
+        fields = ('id', 'name', 'category', 'category_id', 'price', 'description', 'image', 'specifications', 'stock')
 
 class CartItemSerializer(serializers.ModelSerializer):
     product = ProductSerializer()

@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Product, Cart, CartItem, Profile
-from .serializers import ProductSerializer, CartSerializer, CartItemSerializer, UserSerializer, RegisterSerializer
+from .models import Product, Cart, CartItem, Profile, Category
+from .serializers import ProductSerializer, CartSerializer, CartItemSerializer, UserSerializer, RegisterSerializer, CategorySerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.contrib.auth.models import User
@@ -14,6 +14,46 @@ import random
 from .permissions import IsAdminRole
 
 from rest_framework.parsers import MultiPartParser, FormParser
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAdminRole]
+        return [permission() for permission in permission_classes]
+
+from rest_framework import viewsets, status
+import json
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from .models import Product, Cart, CartItem, Profile, Category
+from .serializers import ProductSerializer, CartSerializer, CartItemSerializer, UserSerializer, RegisterSerializer, CategorySerializer
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
+from django.core.mail import send_mail
+from django.conf import settings
+import random
+from .permissions import IsAdminRole
+
+from rest_framework.parsers import MultiPartParser, FormParser
+
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAdminRole]
+        return [permission() for permission in permission_classes]
 
 class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
@@ -27,12 +67,35 @@ class ProductViewSet(viewsets.ModelViewSet):
             permission_classes = [IsAdminRole]
         return [permission() for permission in permission_classes]
 
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        if 'specifications' in data and isinstance(data['specifications'], str):
+            data['specifications'] = json.loads(data['specifications'])
+        
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        data = request.data.copy()
+        if 'specifications' in data and isinstance(data['specifications'], str):
+            data['specifications'] = json.loads(data['specifications'])
+            
+        serializer = self.get_serializer(instance, data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.image:
+            # Delete the image file from the filesystem
+            instance.image.delete(save=False)
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class CartViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -149,7 +212,11 @@ def login(request):
     if not all([email, password]):
         return Response({'error': 'Email and password are required'}, status=400)
 
-    user = authenticate(username=email, password=password)
+    try:
+        user_obj = User.objects.get(email=email)
+        user = authenticate(username=user_obj.username, password=password)
+    except User.DoesNotExist:
+        user = None
 
     if not user:
         return Response({'error': 'Invalid credentials'}, status=400)
