@@ -5,8 +5,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Star, 
   ShoppingCart, 
@@ -19,15 +17,35 @@ import {
   Trash2
 } from 'lucide-react';
 
+const imageModules = import.meta.glob('../assets/images/*');
+
+const categories = Object.entries(imageModules).map(([path, importer]) => {
+  const fileName = path.split('/').pop();
+  const categoryName = fileName.split('.')[0];
+  return { name: categoryName, importer };
+});
+
 const ProductList = () => {
   const [products, setProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [filterCategory, setFilterCategory] = useState('all');
-  const [filterBrand, setFilterBrand] = useState('all');
   const { addToCart, cart, loading } = useCart();
   const { isAdmin, token } = useAuth();
   const navigate = useNavigate();
+  const [imageUrls, setImageUrls] = React.useState({});
+
+  React.useEffect(() => {
+    const loadImageUrls = async () => {
+      const urls = {};
+      for (const category of categories) {
+        const module = await category.importer();
+        urls[category.name] = module.default;
+      }
+      setImageUrls(urls);
+    };
+    loadImageUrls();
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -52,8 +70,12 @@ const ProductList = () => {
 
   // Filter and sort products
   const filteredAndSortedLaptops = useMemo(() => {
-    return products;
-  }, [products]);
+    let filteredProducts = products;
+    if (filterCategory !== 'all') {
+      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase() === filterCategory.toLowerCase());
+    }
+    return filteredProducts;
+  }, [products, filterCategory]);
 
   const handleAddToCart = (productId) => {
     addToCart(productId, 1);
@@ -88,29 +110,44 @@ const ProductList = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="space-y-4">
-        <h1 className="text-3xl font-bold">Premium Laptops</h1>
-        <p className="text-muted-foreground">
-          Discover our curated collection of high-performance laptops from top brands
-        </p>
+      {/* Category Section */}
+      <div className="flex space-x-4 overflow-x-auto pb-4">
+        <div
+          className={`cursor-pointer p-2 rounded-lg ${filterCategory === 'all' ? 'bg-gray-200' : ''}`}
+          onClick={() => setFilterCategory('all')}
+        >
+          <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center">
+            <span className="text-sm font-semibold">All</span>
+          </div>
+        </div>
+        {categories.map((category) => (
+          <div
+            key={category.name}
+            className={`cursor-pointer p-2 rounded-lg ${filterCategory === category.name ? 'bg-gray-200' : ''}`}
+            onClick={() => setFilterCategory(category.name)}
+          >
+            {imageUrls[category.name] && (
+              <img src={imageUrls[category.name]} alt={category.name} className="w-24 h-24 rounded-full object-cover" />
+            )}
+            <p className="text-center text-sm mt-2">{category.name}</p>
+          </div>
+        ))}
       </div>
 
       {/* Results count */}
       <div className="text-sm text-muted-foreground">
-        Showing {filteredAndSortedLaptops.length} of {products.length} laptops
+        Showing {filteredAndSortedLaptops.length} of {products.length} products
       </div>
 
       {/* Product Grid */}
       {filteredAndSortedLaptops.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-muted-foreground text-lg">No laptops found matching your criteria</div>
+          <div className="text-muted-foreground text-lg">No products found matching your criteria</div>
           <Button 
             variant="outline" 
             onClick={() => {
               setSearchTerm('');
               setFilterCategory('all');
-              setFilterBrand('all');
             }}
             className="mt-4"
           >

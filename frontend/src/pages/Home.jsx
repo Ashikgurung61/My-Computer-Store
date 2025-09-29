@@ -74,7 +74,7 @@ const Home = () => {
               </Button>
               {isAdmin && (
                 <Button size="lg" variant="outline" asChild>
-                  <Link to="/add-product">
+                  <Link to="/category">
                     <PlusCircle className="mr-2 h-5 w-5" />
                     Add New Product
                   </Link>
