@@ -1,6 +1,6 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 const imageModules = import.meta.glob('../assets/images/*');
 
@@ -26,8 +26,12 @@ const Category = () => {
     loadImageUrls();
   }, []);
 
-  const handleCategoryClick = (category) => {
+  const handleAddProductClick = (category) => {
     navigate(`/add-product/${category.name}`);
+  };
+
+  const handleViewProductsClick = (category) => {
+    navigate(`/products?category=${category.name}`);
   };
 
   return (
@@ -37,14 +41,17 @@ const Category = () => {
         {categories.map((category) => (
           <div
             key={category.name}
-            className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transform hover:scale-105 transition-transform duration-300"
-            onClick={() => handleCategoryClick(category)}
+            className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col"
           >
             {imageUrls[category.name] && (
               <img src={imageUrls[category.name]} alt={category.name} className="w-full h-48 object-cover" />
             )}
-            <div className="p-4">
-              <h2 className="text-lg font-semibold text-center">{category.name}</h2>
+            <div className="p-4 flex-grow flex flex-col">
+              <h2 className="text-lg font-semibold text-center mb-4">{category.name}</h2>
+              <div className="mt-auto space-y-2">
+                <Button onClick={() => handleViewProductsClick(category)} className="w-full">View Products</Button>
+                <Button onClick={() => handleAddProductClick(category)} className="w-full" variant="outline">Add Product</Button>
+              </div>
             </div>
           </div>
         ))}

@@ -17,16 +17,16 @@ export const AuthProvider = ({ children }) => {
 
   // Load user and token from localStorage on app start
   useEffect(() => {
-    const savedUser = localStorage.getItem('techstore_user');
-    const savedToken = localStorage.getItem('techstore_token');
+    const savedUser = localStorage.getItem('tamki_user');
+    const savedToken = localStorage.getItem('tamki_token');
     if (savedUser && savedToken) {
       try {
         setUser(JSON.parse(savedUser));
         setToken(savedToken);
       } catch (error) {
         console.error('Error parsing saved user:', error);
-        localStorage.removeItem('techstore_user');
-        localStorage.removeItem('techstore_token');
+        localStorage.removeItem('tamki_user');
+localStorage.removeItem('tamki_token');
       }
     }
     setLoading(false);
@@ -35,10 +35,10 @@ export const AuthProvider = ({ children }) => {
   // Save user and token to localStorage whenever they change
   useEffect(() => {
     if (user && token) {
-      localStorage.setItem('techstore_user', JSON.stringify(user));
-      localStorage.setItem('techstore_token', token);
+      localStorage.setItem('tamki_user', JSON.stringify(user));
+      localStorage.setItem('tamki_token', token);
     } else {
-      localStorage.removeItem('techstore_user');
+localStorage.removeItem('tamki_user');
       localStorage.removeItem('techstore_token');
     }
   }, [user, token]);

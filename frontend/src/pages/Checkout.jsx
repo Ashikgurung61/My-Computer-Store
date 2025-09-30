@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,28 +16,21 @@ import {
   Shield, 
   Loader2,
   ArrowLeft,
-  Lock
+  Lock,
+  MapPin
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Checkout = () => {
-  const { cartItems, getCartTotal, getCartItemsCount, clearCart } = useCart();
-  const { user } = useAuth();
+  const { cart, getCartTotal, getCartItemsCount, clearCart } = useCart();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState({});
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [addressLoading, setAddressLoading] = useState(true);
   const [formData, setFormData] = useState({
-    // Shipping Information
-    firstName: '',
-    lastName: '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'United States',
-    
     // Payment Information
     paymentMethod: 'card',
     cardNumber: '',
@@ -47,12 +40,42 @@ const Checkout = () => {
     
     // Options
     saveInfo: false,
-    sameAsShipping: true
   });
 
+  const API_BASE_URL = 'http://127.0.0.1:8000/api';
+
+  useEffect(() => {
+    const fetchDefaultAddress = async () => {
+      if (!token) {
+        setAddressLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch(`${API_BASE_URL}/addresses/`, {
+          headers: {
+            'Authorization': `Token ${token}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const defaultAddr = data.find(addr => addr.is_default) || data[0];
+          setSelectedAddress(defaultAddr);
+        } else {
+          toast.error('Failed to fetch addresses.');
+        }
+      } catch (error) {
+        console.error('Error fetching addresses:', error);
+        toast.error('Error fetching addresses.');
+      } finally {
+        setAddressLoading(false);
+      }
+    };
+    fetchDefaultAddress();
+  }, [token]);
+
   const subtotal = getCartTotal();
-  const shipping = subtotal > 500 ? 0 : 29.99;
-  const tax = subtotal * 0.08;
+  const shipping = subtotal > 200 ? 0 : 29.99;
+  const tax = 0;
   const total = subtotal + shipping + tax;
 
   const formatPrice = (price) => {
@@ -81,15 +104,9 @@ const Checkout = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Shipping validation
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    if (!formData.phone.trim()) newErrors.phone = 'Phone is required';
-    if (!formData.address.trim()) newErrors.address = 'Address is required';
-    if (!formData.city.trim()) newErrors.city = 'City is required';
-    if (!formData.state.trim()) newErrors.state = 'State is required';
-    if (!formData.zipCode.trim()) newErrors.zipCode = 'ZIP code is required';
+    if (!selectedAddress) {
+      newErrors.address = 'Please select a shipping address.';
+    }
 
     // Payment validation
     if (formData.paymentMethod === 'card') {
@@ -129,20 +146,12 @@ const Checkout = () => {
       // Generate order data
       const orderData = {
         orderId: `ORD-${Date.now()}`,
-        items: cartItems,
+        items: cart.items,
         subtotal,
         shipping,
         tax,
         total,
-        shippingAddress: {
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          zipCode: formData.zipCode,
-          country: formData.country
-        },
+        shippingAddress: selectedAddress,
         paymentMethod: formData.paymentMethod,
         orderDate: new Date().toISOString(),
         estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
@@ -164,9 +173,32 @@ const Checkout = () => {
     }
   };
 
-  if (cartItems.length === 0) {
+  if (!cart || !cart.items || cart.items.length === 0) {
     navigate('/cart');
     return null;
+  }
+
+  if (addressLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!selectedAddress) {
+    return (
+      <div className="max-w-md mx-auto text-center space-y-4 p-4">
+        <MapPin className="mx-auto h-16 w-16 text-muted-foreground" />
+        <h2 className="text-2xl font-bold">No Shipping Address Found</h2>
+        <p className="text-muted-foreground">
+          Please add a shipping address to proceed with checkout.
+        </p>
+        <Button onClick={() => navigate('/addresses')}>
+          Add Shipping Address
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -197,124 +229,16 @@ const Checkout = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      className={errors.firstName ? 'border-destructive' : ''}
-                    />
-                    {errors.firstName && (
-                      <p className="text-sm text-destructive">{errors.firstName}</p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      className={errors.lastName ? 'border-destructive' : ''}
-                    />
-                    {errors.lastName && (
-                      <p className="text-sm text-destructive">{errors.lastName}</p>
-                    )}
-                  </div>
+                <div className="space-y-1">
+                  <p className="font-medium">{selectedAddress.first_name} {selectedAddress.last_name}</p>
+                  <p className="text-muted-foreground">{selectedAddress.address}</p>
+                  <p className="text-muted-foreground">{selectedAddress.city}, {selectedAddress.state} {selectedAddress.zip_code}</p>
+                  <p className="text-muted-foreground">{selectedAddress.country}</p>
+                  <p className="text-muted-foreground">Phone: {selectedAddress.phone}</p>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className={errors.email ? 'border-destructive' : ''}
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-destructive">{errors.email}</p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className={errors.phone ? 'border-destructive' : ''}
-                    />
-                    {errors.phone && (
-                      <p className="text-sm text-destructive">{errors.phone}</p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className={errors.address ? 'border-destructive' : ''}
-                  />
-                  {errors.address && (
-                    <p className="text-sm text-destructive">{errors.address}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      className={errors.city ? 'border-destructive' : ''}
-                    />
-                    {errors.city && (
-                      <p className="text-sm text-destructive">{errors.city}</p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      className={errors.state ? 'border-destructive' : ''}
-                    />
-                    {errors.state && (
-                      <p className="text-sm text-destructive">{errors.state}</p>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="zipCode">ZIP Code</Label>
-                    <Input
-                      id="zipCode"
-                      name="zipCode"
-                      value={formData.zipCode}
-                      onChange={handleInputChange}
-                      className={errors.zipCode ? 'border-destructive' : ''}
-                    />
-                    {errors.zipCode && (
-                      <p className="text-sm text-destructive">{errors.zipCode}</p>
-                    )}
-                  </div>
-                </div>
+                <Button variant="outline" onClick={() => navigate('/addresses')}>
+                  Change Address
+                </Button>
               </CardContent>
             </Card>
 
@@ -440,7 +364,7 @@ const Checkout = () => {
               <CardContent className="space-y-4">
                 {/* Items */}
                 <div className="space-y-3">
-                  {cartItems.map((item) => (
+                  {cart?.items?.map((item) => (
                     <div key={item.id} className="flex gap-3">
                       <img
                         src={item.image}

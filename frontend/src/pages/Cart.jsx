@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +15,7 @@ import {
   ArrowRight,
   Loader2
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Cart = () => {
   const { 
@@ -25,7 +27,11 @@ const Cart = () => {
     getCartItemsCount,
     loading 
   } = useCart();
+  const { token } = useAuth();
   const navigate = useNavigate();
+  const [addressLoading, setAddressLoading] = useState(false);
+
+  const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-US', {
@@ -42,9 +48,35 @@ const Cart = () => {
     }
   };
 
+  const handleProceedToCheckout = async () => {
+    setAddressLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/addresses/`, {
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.length === 0) {
+          navigate('/addresses');
+        } else {
+          navigate('/checkout');
+        }
+      } else {
+        toast.error('Failed to fetch addresses.');
+      }
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      toast.error('Error fetching addresses.');
+    } finally {
+      setAddressLoading(false);
+    }
+  };
+
   const subtotal = getCartTotal();
-  const shipping = subtotal > 500 ? 0 : 29.99;
-  const tax = subtotal * 0.08; // 8% tax
+  const shipping = subtotal > 200 ? 0 : 29.99;
+  const tax = 0; // 8% tax
   const total = subtotal + shipping + tax;
 
   if (!cart || !cart.items || cart.items.length === 0) {
@@ -154,10 +186,10 @@ const Cart = () => {
                       {/* Price */}
                       <div className="text-right">
                         <div className="font-semibold text-lg">
-                          {formatPrice(item.product.price * item.quantity)}
+                          {formatPrice(item.product.price_after_discount * item.quantity)}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {formatPrice(item.product.price)} each
+                          {formatPrice(item.product.price_after_discount)} each
                         </div>
                       </div>
                     </div>
@@ -207,17 +239,17 @@ const Cart = () => {
 
               {shipping > 0 && (
                 <div className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
-                  Add {formatPrice(500 - subtotal)} more to get free shipping!
+                  Add {formatPrice(200 - subtotal)} more to get free shipping!
                 </div>
               )}
 
               <Button 
                 className="w-full" 
                 size="lg"
-                onClick={() => navigate('/checkout')}
-                disabled={loading}
+                onClick={handleProceedToCheckout}
+                disabled={loading || addressLoading}
               >
-                {loading ? (
+                {(loading || addressLoading) ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <>

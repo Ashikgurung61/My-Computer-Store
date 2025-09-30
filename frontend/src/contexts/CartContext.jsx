@@ -82,10 +82,9 @@ export const CartProvider = ({ children }) => {
         },
       });
       if (response.ok) {
-        const data = await response.json();
-        setCart(data);
+        fetchCart();
       } else {
-        console.error('Failed to remove from cart');
+        console.error(`Failed to remove from cart ${itemId}`);
       }
     } catch (error) {
       console.error('Error removing from cart:', error);
@@ -111,8 +110,7 @@ export const CartProvider = ({ children }) => {
         body: JSON.stringify({ quantity: newQuantity }),
       });
       if (response.ok) {
-        const data = await response.json();
-        setCart(data);
+        fetchCart();
       } else {
         console.error('Failed to update quantity');
       }
@@ -130,7 +128,7 @@ export const CartProvider = ({ children }) => {
 
   const getCartTotal = () => {
     if (!cart || !cart.items) return 0;
-    return cart.items.reduce((total, item) => total + (item.product.price * item.quantity), 0);
+    return cart.items.reduce((total, item) => total + (item.product.price_after_discount * item.quantity), 0);
   };
 
   const getCartItemsCount = () => {

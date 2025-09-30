@@ -52,6 +52,15 @@ const ProductDetail = () => {
     fetchProduct();
   }, [id]);
 
+  useEffect(() => {
+    if (product) {
+      const recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed')) || [];
+      const updatedRecentlyViewed = recentlyViewed.filter(item => item.id !== product.id);
+      updatedRecentlyViewed.unshift({ id: product.id, timestamp: new Date().getTime() });
+      localStorage.setItem('recentlyViewed', JSON.stringify(updatedRecentlyViewed.slice(0, 10)));
+    }
+  }, [product]);
+
   const cartItem = cart?.items.find(item => item.product.id === product?.id);
 
   const handleDelete = async () => {
@@ -127,19 +136,24 @@ const ProductDetail = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-4">
-          <div className="aspect-square overflow-hidden rounded-lg border">
+          <div className="aspect-square overflow-hidden rounded-lg border relative">
             <img
               src={product.image || '/placeholder.svg'}
               alt={product.name}
               className="w-full h-full object-cover"
             />
+            {product.discount > 0 && (
+              <Badge variant="secondary" className="absolute top-2 left-2">
+                {product.discount}% OFF
+              </Badge>
+            )}
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">{product.brand}</Badge>
+              <Badge variant="secondary">{product.category.name}</Badge>
               {isOutOfStock && (
                 <Badge variant="destructive">Out of Stock</Badge>
               )}
@@ -155,7 +169,10 @@ const ProductDetail = () => {
 
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <span className="text-3xl font-bold">{formatPrice(product.price)}</span>
+              <span className="text-3xl font-bold">{formatPrice(parseFloat(product.price) * (1 - parseFloat(product.discount) / 100))}</span>
+              {product.discount > 0 && (
+                <span className="text-xl text-muted-foreground line-through">{formatPrice(parseFloat(product.price))}</span>
+              )}
             </div>
           </div>
 
