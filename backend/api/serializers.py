@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Product, Cart, CartItem, Profile, Category
+from .models import Product, Cart, CartItem, Profile, Category, Address
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -38,13 +38,28 @@ class ProductSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = ('id', 'name', 'category', 'category_id', 'price', 'description', 'image', 'specifications', 'stock')
+        fields = ('id', 'name', 'category', 'category_id', 'price', 'description', 'image', 'specifications', 'stock', 'discount', 'price_after_discount')
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.image:
+            request = self.context.get('request')
+            representation['image'] = request.build_absolute_uri(instance.image.url)
+        return representation
 
 class CartItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer()
+    product = ProductSerializer(read_only=True)
+    product_id = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all(), write_only=True, source='product')
+
     class Meta:
         model = CartItem
-        fields = ('id', 'product', 'quantity')
+        fields = ['id', 'product', 'product_id', 'quantity', 'price']
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = '__all__'
+        read_only_fields = ('user',)
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, read_only=True)

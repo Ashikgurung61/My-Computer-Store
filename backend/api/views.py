@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Product, Cart, CartItem, Profile, Category
-from .serializers import ProductSerializer, CartSerializer, CartItemSerializer, UserSerializer, RegisterSerializer, CategorySerializer
+from .models import Product, Cart, CartItem, Profile, Category, Address
+from .serializers import ProductSerializer, CartSerializer, CartItemSerializer, UserSerializer, RegisterSerializer, CategorySerializer, AddressSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.contrib.auth.models import User
@@ -12,36 +12,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 import random
 from .permissions import IsAdminRole
-
-from rest_framework.parsers import MultiPartParser, FormParser
-
-class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = Category.objects.all()
-    serializer_class = CategorySerializer
-
-    def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
-            permission_classes = [AllowAny]
-        else:
-            permission_classes = [IsAdminRole]
-        return [permission() for permission in permission_classes]
-
-from rest_framework import viewsets, status
 import json
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Product, Cart, CartItem, Profile, Category
-from .serializers import ProductSerializer, CartSerializer, CartItemSerializer, UserSerializer, RegisterSerializer, CategorySerializer
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
-from rest_framework.authtoken.models import Token
-from django.core.mail import send_mail
-from django.conf import settings
-import random
-from .permissions import IsAdminRole
-
 from rest_framework.parsers import MultiPartParser, FormParser
 
 class CategoryViewSet(viewsets.ModelViewSet):
@@ -59,6 +30,9 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
     parser_classes = (MultiPartParser, FormParser)
+
+    def get_serializer_context(self):
+        return {'request': self.request}
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
@@ -102,7 +76,7 @@ class CartViewSet(viewsets.ViewSet):
 
     def list(self, request):
         cart, _ = Cart.objects.get_or_create(user=request.user)
-        serializer = CartSerializer(cart)
+        serializer = CartSerializer(cart, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
@@ -122,6 +96,12 @@ class CartViewSet(viewsets.ViewSet):
         if product.stock < quantity:
             return Response({'error': 'Not enough stock available'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Calculate the price
+        discounted_price = product.price
+        if product.discount is not None and product.discount > 0:
+            discount_amount = (product.discount / 100) * product.price
+            discounted_price -= discount_amount
+
         cart, _ = Cart.objects.get_or_create(user=request.user)
         cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product)
 
@@ -130,44 +110,66 @@ class CartViewSet(viewsets.ViewSet):
         else:
             cart_item.quantity = quantity
         
+        cart_item.price = discounted_price
         cart_item.save()
 
         # Decrement the stock
         product.stock -= quantity
         product.save(update_fields=['stock'])
 
-        serializer = CartSerializer(cart)
+        serializer = CartSerializer(cart, context={'request': request})
         return Response(serializer.data)
 
-    @action(detail=True, methods=['delete'])
-    def remove_item(self, request, pk=None):
-        try:
-            cart_item = CartItem.objects.get(id=pk, cart__user=request.user)
-        except CartItem.DoesNotExist:
-            return Response({'error': 'Cart item not found'}, status=status.HTTP_404_NOT_FOUND)
+class CartItemViewSet(viewsets.ModelViewSet):
+    serializer_class = CartItemSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_context(self):
+        return {'request': self.request}
+
+    def get_queryset(self):
+        return CartItem.objects.filter(cart__user=self.request.user)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        old_quantity = instance.quantity
         
-        cart_item.delete()
-        cart = Cart.objects.get(user=request.user)
-        serializer = CartSerializer(cart)
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        new_quantity = serializer.validated_data.get('quantity', old_quantity)
+
+        quantity_diff = new_quantity - old_quantity
+
+        product = instance.product
+
+        if product.stock < quantity_diff:
+            return Response({'error': 'Not enough stock available'}, status=status.HTTP_400_BAD_REQUEST)
+
+        product.stock -= quantity_diff
+        product.save(update_fields=['stock'])
+        
+        self.perform_update(serializer)
+
         return Response(serializer.data)
 
-    @action(detail=True, methods=['put'])
-    def update_item(self, request, pk=None):
-        quantity = request.data.get('quantity')
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        # Add back the stock
+        product = instance.product
+        product.stock += instance.quantity
+        product.save(update_fields=['stock'])
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-        if not quantity:
-            return Response({'error': 'Quantity is required'}, status=status.HTTP_400_BAD_REQUEST)
+class AddressViewSet(viewsets.ModelViewSet):
+    serializer_class = AddressSerializer
+    permission_classes = [IsAuthenticated]
 
-        try:
-            cart_item = CartItem.objects.get(id=pk, cart__user=request.user)
-        except CartItem.DoesNotExist:
-            return Response({'error': 'Cart item not found'}, status=status.HTTP_44_NOT_FOUND)
+    def get_queryset(self):
+        return Address.objects.filter(user=self.request.user)
 
-        cart_item.quantity = int(quantity)
-        cart_item.save()
-        cart = Cart.objects.get(user=request.user)
-        serializer = CartSerializer(cart)
-        return Response(serializer.data)
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 @api_view(['POST'])
 def send_otp(request):
