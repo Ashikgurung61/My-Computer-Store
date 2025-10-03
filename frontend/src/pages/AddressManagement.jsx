@@ -184,6 +184,10 @@ const AddressManagement = () => {
     }
   };
 
+  const handleSelectAddress = (address) => {
+    navigate('/checkout', { state: { selectedAddress: address } });
+  };
+
   if (loading && addresses.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -349,7 +353,7 @@ const AddressManagement = () => {
                 <Card key={address.id} className="relative">
                   <CardContent className="p-4 flex items-start space-x-4">
                     <RadioGroupItem value={address.id.toString()} id={`address-${address.id}`} className="mt-1" />
-                    <div className="flex-1">
+                    <div className="flex-1" onClick={() => handleSelectAddress(address)}>
                       <Label htmlFor={`address-${address.id}`} className="flex flex-col space-y-1 cursor-pointer">
                         <div className="font-semibold flex items-center">
                           {address.first_name} {address.last_name}

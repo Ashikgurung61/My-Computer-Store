@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,28 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
   CreditCard, 
   Truck, 
   Shield, 
   Loader2,
   ArrowLeft,
   Lock,
-  MapPin
+  MapPin,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -25,18 +40,29 @@ const Checkout = () => {
   const { cart, getCartTotal, getCartItemsCount, clearCart } = useCart();
   const { user, token } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState({});
+  const [addresses, setAddresses] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [addressLoading, setAddressLoading] = useState(true);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [newAddress, setNewAddress] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    country: 'United States',
+    is_default: false,
+  });
   const [formData, setFormData] = useState({
     // Payment Information
-    paymentMethod: 'card',
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-    cardName: '',
+    paymentMethod: 'cod',
+    upiId: '',
     
     // Options
     saveInfo: false,
@@ -44,39 +70,47 @@ const Checkout = () => {
 
   const API_BASE_URL = 'http://127.0.0.1:8000/api';
 
-  useEffect(() => {
-    const fetchDefaultAddress = async () => {
-      if (!token) {
-        setAddressLoading(false);
-        return;
-      }
-      try {
-        const response = await fetch(`${API_BASE_URL}/addresses/`, {
-          headers: {
-            'Authorization': `Token ${token}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
+  const fetchAddresses = async () => {
+    if (!token) {
+      setAddressLoading(false);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/addresses/`, {
+        headers: {
+          'Authorization': `Token ${token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAddresses(data);
+        if (location.state && location.state.selectedAddress) {
+          setSelectedAddress(location.state.selectedAddress);
+        } else {
           const defaultAddr = data.find(addr => addr.is_default) || data[0];
           setSelectedAddress(defaultAddr);
-        } else {
-          toast.error('Failed to fetch addresses.');
         }
-      } catch (error) {
-        console.error('Error fetching addresses:', error);
-        toast.error('Error fetching addresses.');
-      } finally {
-        setAddressLoading(false);
+      } else {
+        toast.error('Failed to fetch addresses.');
       }
-    };
-    fetchDefaultAddress();
-  }, [token]);
+    } catch (error) {
+      console.error('Error fetching addresses:', error);
+      toast.error('Error fetching addresses.');
+    } finally {
+      setAddressLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAddresses();
+  }, [token, location.state]);
 
   const subtotal = getCartTotal();
   const shipping = subtotal > 200 ? 0 : 29.99;
   const tax = 0;
   const total = subtotal + shipping + tax;
+
+  const MEDIA_BASE_URL = 'http://127.0.0.1:8000/media/';
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-US', {
@@ -98,6 +132,77 @@ const Checkout = () => {
         ...prev,
         [name]: ''
       }));
+    }
+  };
+
+  const handleNewAddressChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setNewAddress(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleAddNewAddress = async (e) => {
+    e.preventDefault();
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/addresses/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Token ${token}`,
+        },
+        body: JSON.stringify(newAddress),
+      });
+
+      if (response.ok) {
+        const addedAddress = await response.json();
+        toast.success('Address added successfully!');
+        setIsAddingAddress(false);
+        setNewAddress({
+          first_name: '',
+          last_name: '',
+          phone: '',
+          address: '',
+          city: '',
+          state: '',
+          zip_code: '',
+          country: 'United States',
+          is_default: false,
+        });
+
+        let updatedAddresses = [...addresses, addedAddress];
+
+        if (updatedAddresses.length > 3) {
+          const oldestAddress = updatedAddresses[0]; // Assuming oldest is the first one
+          try {
+            await fetch(`${API_BASE_URL}/addresses/${oldestAddress.id}/`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Token ${token}`,
+              },
+            });
+            toast.info('Oldest address was removed to keep the list clean.');
+            updatedAddresses.shift(); // Remove the oldest from the local list
+          } catch (error) {
+            console.error('Error deleting oldest address:', error);
+            toast.error('Could not remove the oldest address.');
+          }
+        }
+
+        setAddresses(updatedAddresses);
+        setSelectedAddress(addedAddress);
+        fetchAddresses(); // Re-sync with the server in the background
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.detail || 'Failed to save address.');
+      }
+    } catch (error) {
+      console.error('Error saving address:', error);
+      toast.error('Error saving address.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -173,8 +278,13 @@ const Checkout = () => {
     }
   };
 
+  useEffect(() => {
+    if (!cart || !cart.items || cart.items.length === 0) {
+      navigate('/cart');
+    }
+  }, [cart, navigate]);
+
   if (!cart || !cart.items || cart.items.length === 0) {
-    navigate('/cart');
     return null;
   }
 
@@ -229,16 +339,62 @@ const Checkout = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-1">
-                  <p className="font-medium">{selectedAddress.first_name} {selectedAddress.last_name}</p>
-                  <p className="text-muted-foreground">{selectedAddress.address}</p>
-                  <p className="text-muted-foreground">{selectedAddress.city}, {selectedAddress.state} {selectedAddress.zip_code}</p>
-                  <p className="text-muted-foreground">{selectedAddress.country}</p>
-                  <p className="text-muted-foreground">Phone: {selectedAddress.phone}</p>
+                <div className="space-y-2">
+                  <Label>Select Address</Label>
+                  <Select 
+                    value={selectedAddress ? selectedAddress.id : ''}
+                    onValueChange={(value) => {
+                      const address = addresses.find(a => a.id === parseInt(value));
+                      setSelectedAddress(address);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an address" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {addresses.map(address => (
+                        <SelectItem key={address.id} value={address.id}>
+                          {address.first_name} {address.last_name}, {address.address}, {address.city}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Button variant="outline" onClick={() => navigate('/addresses')}>
-                  Change Address
-                </Button>
+
+                <Dialog open={isAddingAddress} onOpenChange={setIsAddingAddress}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="mt-2">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add New Address
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add New Address</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAddNewAddress} className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input placeholder="First Name" name="first_name" value={newAddress.first_name} onChange={handleNewAddressChange} required />
+                        <Input placeholder="Last Name" name="last_name" value={newAddress.last_name} onChange={handleNewAddressChange} required />
+                      </div>
+                      <Input placeholder="Phone" name="phone" value={newAddress.phone} onChange={handleNewAddressChange} required />
+                      <Input placeholder="Address" name="address" value={newAddress.address} onChange={handleNewAddressChange} required />
+                      <div className="grid grid-cols-3 gap-4">
+                        <Input placeholder="City" name="city" value={newAddress.city} onChange={handleNewAddressChange} required />
+                        <Input placeholder="State" name="state" value={newAddress.state} onChange={handleNewAddressChange} required />
+                        <Input placeholder="Zip Code" name="zip_code" value={newAddress.zip_code} onChange={handleNewAddressChange} required />
+                      </div>
+                      <Input placeholder="Country" name="country" value={newAddress.country} onChange={handleNewAddressChange} required />
+                      <div className="flex items-center space-x-2">
+                        <Checkbox id="is_default" name="is_default" checked={newAddress.is_default} onCheckedChange={(checked) => setNewAddress(prev => ({ ...prev, is_default: checked }))} />
+                        <Label htmlFor="is_default">Set as default</Label>
+                      </div>
+                      <Button type="button" onClick={handleAddNewAddress} disabled={isProcessing}>
+                        {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Address'}
+                      </Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
 
@@ -256,106 +412,37 @@ const Checkout = () => {
                   onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value }))}
                 >
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="card" id="card" />
-                    <Label htmlFor="card">Credit/Debit Card</Label>
+                    <RadioGroupItem value="cod" id="cod" />
+                    <Label htmlFor="cod">Cash on Delivery</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="paypal" id="paypal" />
-                    <Label htmlFor="paypal">PayPal (Demo)</Label>
+                    <RadioGroupItem value="upi" id="upi" />
+                    <Label htmlFor="upi">UPI</Label>
                   </div>
                 </RadioGroup>
 
-                {formData.paymentMethod === 'card' && (
+                {formData.paymentMethod === 'upi' && (
                   <div className="space-y-4 pt-4">
                     <div className="space-y-2">
-                      <Label htmlFor="cardName">Cardholder Name</Label>
+                      <Label htmlFor="upiId">UPI ID</Label>
                       <Input
-                        id="cardName"
-                        name="cardName"
-                        value={formData.cardName}
+                        id="upiId"
+                        name="upiId"
+                        placeholder="yourname@okhdfcbank"
+                        value={formData.upiId}
                         onChange={handleInputChange}
-                        className={errors.cardName ? 'border-destructive' : ''}
+                        className={errors.upiId ? 'border-destructive' : ''}
                       />
-                      {errors.cardName && (
-                        <p className="text-sm text-destructive">{errors.cardName}</p>
+                      {errors.upiId && (
+                        <p className="text-sm text-destructive">{errors.upiId}</p>
                       )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="cardNumber">Card Number</Label>
-                      <Input
-                        id="cardNumber"
-                        name="cardNumber"
-                        placeholder="1234 5678 9012 3456"
-                        value={formData.cardNumber}
-                        onChange={handleInputChange}
-                        className={errors.cardNumber ? 'border-destructive' : ''}
-                      />
-                      {errors.cardNumber && (
-                        <p className="text-sm text-destructive">{errors.cardNumber}</p>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="expiryDate">Expiry Date</Label>
-                        <Input
-                          id="expiryDate"
-                          name="expiryDate"
-                          placeholder="MM/YY"
-                          value={formData.expiryDate}
-                          onChange={handleInputChange}
-                          className={errors.expiryDate ? 'border-destructive' : ''}
-                        />
-                        {errors.expiryDate && (
-                          <p className="text-sm text-destructive">{errors.expiryDate}</p>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="cvv">CVV</Label>
-                        <Input
-                          id="cvv"
-                          name="cvv"
-                          placeholder="123"
-                          value={formData.cvv}
-                          onChange={handleInputChange}
-                          className={errors.cvv ? 'border-destructive' : ''}
-                        />
-                        {errors.cvv && (
-                          <p className="text-sm text-destructive">{errors.cvv}</p>
-                        )}
-                      </div>
                     </div>
                   </div>
                 )}
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="saveInfo"
-                    checked={formData.saveInfo}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, saveInfo: checked }))
-                    }
-                  />
-                  <Label htmlFor="saveInfo" className="text-sm">
-                    Save payment information for future orders
-                  </Label>
-                </div>
               </CardContent>
             </Card>
-
-            {/* Demo Notice */}
-            <Alert>
-              <Shield className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Demo Mode:</strong> This is a simulated checkout. No real payment will be processed.
-                Use any test card number like 4111111111111111.
-              </AlertDescription>
-            </Alert>
+            
           </div>
-
-          {/* Order Summary */}
           <div className="space-y-6">
             <Card>
               <CardHeader>
@@ -367,7 +454,7 @@ const Checkout = () => {
                   {cart?.items?.map((item) => (
                     <div key={item.id} className="flex gap-3">
                       <img
-                        src={item.image}
+                        src={item.product.image}
                         alt={item.name}
                         className="w-12 h-12 object-cover rounded"
                       />
