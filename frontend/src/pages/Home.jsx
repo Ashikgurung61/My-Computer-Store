@@ -14,6 +14,7 @@ import {
   CheckCircle,
   PlusCircle
 } from 'lucide-react';
+import Advertisement from '../components/Advertisement';
 
 const Home = () => {
   const { isAuthenticated, isAdmin } = useAuth();
@@ -73,12 +74,20 @@ const Home = () => {
                 </Link>
               </Button>
               {isAdmin && (
-                <Button size="lg" variant="outline" asChild>
-                  <Link to="/category">
-                    <PlusCircle className="mr-2 h-5 w-5" />
-                    Add New Product
-                  </Link>
-                </Button>
+                <>
+                  <Button size="lg" variant="outline" asChild>
+                    <Link to="/category">
+                      <PlusCircle className="mr-2 h-5 w-5" />
+                      Add New Product
+                    </Link>
+                  </Button>
+                  <Button size="lg" variant="outline" asChild>
+                    <Link to="/add-advertisement">
+                      <PlusCircle className="mr-2 h-5 w-5" />
+                      Add Advertisement
+                    </Link>
+                  </Button>
+                </>
               )}
             </>
           ) : (
@@ -144,6 +153,9 @@ const Home = () => {
           ))}
         </div>
       </section>
+
+      {/* Advertisement Section */}
+      <Advertisement />
 
       {/* Benefits Section */}
       <section className="bg-muted/50 rounded-2xl p-8 md:p-12">

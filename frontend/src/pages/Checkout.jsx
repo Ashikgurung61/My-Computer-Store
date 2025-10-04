@@ -53,10 +53,10 @@ const Checkout = () => {
     last_name: '',
     phone: '',
     address: '',
-    city: '',
-    state: '',
-    zip_code: '',
-    country: 'United States',
+    city: 'Senapati',
+    state: 'Manipur',
+    zip_code: '795106',
+    country: 'India',
     is_default: false,
   });
   const [formData, setFormData] = useState({
@@ -113,9 +113,9 @@ const Checkout = () => {
   const MEDIA_BASE_URL = 'http://127.0.0.1:8000/media/';
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'INR'
     }).format(price);
   };
 
@@ -165,10 +165,10 @@ const Checkout = () => {
           last_name: '',
           phone: '',
           address: '',
-          city: '',
-          state: '',
-          zip_code: '',
-          country: 'United States',
+          city: 'Senapati',
+          state: 'Manipur',
+          zip_code: '795106',
+          country: 'India',
           is_default: false,
         });
 
@@ -229,6 +229,12 @@ const Checkout = () => {
       if (formData.cvv.length !== 3) {
         newErrors.cvv = 'CVV must be 3 digits';
       }
+    } else if (formData.paymentMethod === 'upi') {
+      if (!formData.upiId.trim()) {
+        newErrors.upiId = 'UPI ID is required';
+      } else if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/.test(formData.upiId)) {
+        newErrors.upiId = 'Invalid UPI ID format';
+      }
     }
 
     setErrors(newErrors);
@@ -244,37 +250,73 @@ const Checkout = () => {
 
     setIsProcessing(true);
 
-    try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Generate order data
-      const orderData = {
-        orderId: `ORD-${Date.now()}`,
-        items: cart.items,
-        subtotal,
-        shipping,
-        tax,
-        total,
-        shippingAddress: selectedAddress,
-        paymentMethod: formData.paymentMethod,
-        orderDate: new Date().toISOString(),
-        estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      };
+    if (formData.paymentMethod === 'upi') {
+      try {
+        // Simulate UPI payment processing
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Generate order data
+        const orderData = {
+          orderId: `ORD-${Date.now()}`,
+          items: cart.items,
+          subtotal,
+          shipping,
+          tax,
+          total,
+          shippingAddress: selectedAddress,
+          paymentMethod: formData.paymentMethod,
+          orderDate: new Date().toISOString(),
+          estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        };
 
-      // Store order data in localStorage
-      localStorage.setItem('techstore_last_order', JSON.stringify(orderData));
-      
-      // Clear cart
-      clearCart();
-      
-      // Navigate to order confirmation
-      navigate('/order-confirmation');
-    } catch (error) {
-      console.error('Payment failed:', error);
-      // In a real app, show error message
-    } finally {
-      setIsProcessing(false);
+        // Store order data in localStorage
+        localStorage.setItem('techstore_last_order', JSON.stringify(orderData));
+        
+        // Clear cart
+        clearCart();
+        
+        // Navigate to order confirmation
+        navigate('/order-confirmation');
+      } catch (error) {
+        console.error('Payment failed:', error);
+        toast.error('Payment failed. Please try again.');
+      } finally {
+        setIsProcessing(false);
+      }
+    } else {
+      // Existing logic for other payment methods
+      try {
+        // Simulate payment processing
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Generate order data
+        const orderData = {
+          orderId: `ORD-${Date.now()}`,
+          items: cart.items,
+          subtotal,
+          shipping,
+          tax,
+          total,
+          shippingAddress: selectedAddress,
+          paymentMethod: formData.paymentMethod,
+          orderDate: new Date().toISOString(),
+          estimatedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        };
+
+        // Store order data in localStorage
+        localStorage.setItem('techstore_last_order', JSON.stringify(orderData));
+        
+        // Clear cart
+        clearCart();
+        
+        // Navigate to order confirmation
+        navigate('/order-confirmation');
+      } catch (error) {
+        console.error('Payment failed:', error);
+        // In a real app, show error message
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 

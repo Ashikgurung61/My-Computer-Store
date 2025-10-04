@@ -18,6 +18,7 @@ import Category from './pages/Category';
 import UpdateProduct from './pages/UpdateProduct';
 import CategoryPage from './pages/CategoryPage';
 import AddressManagement from './pages/AddressManagement';
+import AddAdvertisement from './pages/AddAdvertisement';
 
 const AppRoutes = () => {
   const { isAuthenticated, isAdmin } = useAuth();
@@ -127,6 +128,14 @@ const AppRoutes = () => {
                 <ProtectedRoute>
                   <AddressManagement />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/add-advertisement"
+              element={
+                <AdminRoute>
+                  <AddAdvertisement />
+                </AdminRoute>
               }
             />
           </Routes>

@@ -16,6 +16,7 @@ import {
   Pencil,
   Trash2
 } from 'lucide-react';
+import Advertisement from '../components/Advertisement';
 
 const imageModules = import.meta.glob('../assets/images/*');
 
@@ -213,6 +214,9 @@ const ProductList = () => {
           </div>
         ))}
       </div>
+
+      {/* Advertisement Section */}
+      <Advertisement />
 
       <div>
         <h2 className="text-2xl font-bold tracking-tight">{timeBasedCategory}</h2>

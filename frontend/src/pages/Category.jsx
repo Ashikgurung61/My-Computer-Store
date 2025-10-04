@@ -37,15 +37,17 @@ const Category = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-8">Choose a Category</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+      <div className="flex flex-wrap justify-center gap-8">
         {categories.map((category) => (
           <div
             key={category.name}
-            className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col"
+            className="bg-gray-200 shadow-md overflow-hidden flex flex-col items-center"
           >
-            {imageUrls[category.name] && (
-              <img src={imageUrls[category.name]} alt={category.name} className="w-full h-48 object-cover" />
-            )}
+            <div className="p-4">
+              {imageUrls[category.name] && (
+                <img src={imageUrls[category.name]} alt={category.name} className="w-24 h-24 object-cover" />
+              )}
+            </div>
             <div className="p-4 flex-grow flex flex-col">
               <h2 className="text-lg font-semibold text-center mb-4">{category.name}</h2>
               <div className="mt-auto space-y-2">
