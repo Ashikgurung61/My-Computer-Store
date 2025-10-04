@@ -1,6 +1,19 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Product, Cart, CartItem, Profile, Category, Address
+from .models import Product, Cart, CartItem, Profile, Category, Address, Advertisement
+
+class AdvertisementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Advertisement
+        fields = ('id', 'image', 'created_at')
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if instance.image:
+            request = self.context.get('request')
+            representation['image'] = request.build_absolute_uri(instance.image.url)
+        return representation
+
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:

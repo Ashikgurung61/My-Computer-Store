@@ -1,14 +1,12 @@
 import os
 import django
-from pathlib import Path
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend_project.settings')
 django.setup()
 
 from api.models import Category
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-image_dir = PROJECT_ROOT / 'frontend' / 'src' / 'assets' / 'images'
+image_dir = '../../computer_ecommerce/frontend/src/assets/images'
 
 for filename in os.listdir(image_dir):
     if filename.endswith(('.png', '.jpg', '.jpeg')):

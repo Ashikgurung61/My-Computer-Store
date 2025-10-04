@@ -67,8 +67,15 @@ class Address(models.Model):
     city = models.CharField(max_length=255)
     state = models.CharField(max_length=255)
     zip_code = models.CharField(max_length=10)
-    country = models.CharField(max_length=255)
+    country = models.CharField(max_length=255, default='India')
     is_default = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} - {self.address}, {self.city}"
+
+class Advertisement(models.Model):
+    image = models.ImageField(upload_to='advertisements/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Advertisement {self.id}"

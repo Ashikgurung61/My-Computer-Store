@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Product, Cart, CartItem, Profile, Category, Address
-from .serializers import ProductSerializer, CartSerializer, CartItemSerializer, UserSerializer, RegisterSerializer, CategorySerializer, AddressSerializer
+from .models import Product, Cart, CartItem, Profile, Category, Address, Advertisement
+from .serializers import ProductSerializer, CartSerializer, CartItemSerializer, UserSerializer, RegisterSerializer, CategorySerializer, AddressSerializer, AdvertisementSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from django.contrib.auth.models import User
@@ -14,6 +14,22 @@ import random
 from .permissions import IsAdminRole
 import json
 from rest_framework.parsers import MultiPartParser, FormParser
+
+class AdvertisementViewSet(viewsets.ModelViewSet):
+    queryset = Advertisement.objects.all()
+    serializer_class = AdvertisementSerializer
+    parser_classes = (MultiPartParser, FormParser)
+
+    def get_permissions(self):
+        if self.action == 'list' or self.action == 'retrieve':
+            permission_classes = [AllowAny]
+        else:
+            permission_classes = [IsAdminRole]
+        return [permission() for permission in permission_classes]
+
+    def get_serializer_context(self):
+        return {'request': self.request}
+
 
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
